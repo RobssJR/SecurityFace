@@ -8,7 +8,7 @@ with open("../IA/classifier_model.pkl", "rb") as clf_file:
 with open("../IA/label_encoder.pkl", "rb") as encoder_file:
     label_encoder = pickle.load(encoder_file)
 
-video_capture = cv2.VideoCapture(0)
+video_capture: cv2.VideoCapture = cv2.VideoCapture(0)
 
 while True:
     ret, frame = video_capture.read()
