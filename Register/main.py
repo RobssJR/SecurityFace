@@ -1,37 +1,55 @@
-from ast import List
+from typing import List, NoReturn, Tuple
 import PySimpleGUI as sg
 import cv2
 import os
 import datetime
-from typing import NoReturn, Tuple
 import numpy as np
+import json
 
+niveis: List[str] = ["Geral", "Diretores", "Ministro"]
 
-def count_images_in_folder(folder_path):
+def CountImagesFolder(folder_path: str) -> int:
     image_files = [file for file in os.listdir(folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg'))]
     return len(image_files)
 
-def get_frame_and_return_value(cap: cv2.VideoCapture) -> Tuple[bool, np.ndarray]:
-    return cap.read()
+def SaveJson(ra: str, nome: str, nivel: str) -> NoReturn:
+    try:
+        with open('./Images/dados.json', 'r') as json_file:
+            data = json.load(json_file)
+    except FileNotFoundError:
+        data = {}
+
+    data[ra] = {"Nome": nome, "Nivel": nivel}
+
+    with open('./Images/dados.json', 'w') as json_file:
+        json.dump(data, json_file)
+
 
 def SaveImage(path: str, cap: cv2.VideoCapture) -> NoReturn:
-    folder_name: str = "../Images/" + path
+    folderName: str = "./Images/" + path
 
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
+    ret: bool
+    frame: np.ndarray
 
-    ret, frame = get_frame_and_return_value(cap)
-    img_name: str = f"{count_images_in_folder(folder_name)}-{datetime.datetime.now().strftime('%Y-%m-%d')}.png"
+    if not os.path.exists(folderName):
+        os.makedirs(folderName)
 
-    img_path = os.path.join(folder_name, img_name)
+    ret, frame = cap.read() 
+    imgName: str = f"{CountImagesFolder(folderName)}-{datetime.datetime.now().strftime('%Y-%m-%d')}.png"
+
+    img_path = os.path.join(folderName, imgName)
     cv2.imwrite(img_path, frame)
 
 def main() -> NoReturn:
     sg.theme('Black')
 
     layout: List[List[sg.Element]] = [
-        [sg.Image(filename='', key='image')],
-        [sg.Input('', enable_events=True, key='-INPUT-', font=('Arial Bold', 20), expand_x=True, justification='left'),
+        [sg.Image(filename='', key='image', expand_x=True)],
+        [sg.Text(text="RA", font=('Arial Bold', 15)),
+         sg.Input('', enable_events=True, key='-INPUT_RA-', font=('Arial Bold', 15), expand_x=True, justification='left', size=(10,100)),
+         sg.Text(text="Nome", font=('Arial Bold', 15)),
+         sg.Input('', enable_events=True, key='-INPUT_NOME-', font=('Arial Bold', 15), expand_x=True, justification='left', size=(30,100)),
+         sg.Combo(values=niveis, font=('Arial Bold', 15), key="-COMBO-", enable_events=True),
          sg.Button('Save', size=(10, 1), font='Helvetica 14')],
     ]
 
@@ -48,9 +66,20 @@ def main() -> NoReturn:
             break
 
         if event == 'Save':
-            folder_name: str = values['-INPUT-']
-            if folder_name:
-                SaveImage(folder_name, cap)
+            ra: str = values['-INPUT_RA-']
+            nome: str = values['-INPUT_NOME-']
+            nivel_selecionado: str = values["-COMBO-"]
+
+            if not ra:
+                sg.popup_error("Preencha o RA")
+                continue
+            
+            if not nivel_selecionado:
+                sg.popup_error("Preencha o nivel de acesso")
+                continue
+
+            SaveImage(ra, cap)
+            SaveJson(ra, nome, nivel_selecionado)
 
         ret: bool
         frame: np.ndarray
